@@ -71,25 +71,12 @@ class CNN(nn.Module):
         # element for fcn
         self.cnn_fcn = nn.Conv2d(128,128,3,1,1)
         self.glu = GLU(128)
-        # self.cnn_fcn_2 = nn.Conv2d(128,128,3,1,1)
-        # self.glu_2 = GLU(128)
-        # self.cnn_fcn_4 = nn.Conv2d(128,128,3,1,1)
-        # self.glu_4 = GLU(128)
         self.pool_fcn = nn.AvgPool2d([2,1])
-        self.deconv1 = nn.Upsample((78,1), mode='bilinear', align_corners=True)#nn.ConvTranspose2d(128,128,kernel_size=[2,1],stride=[2,1])
-        self.deconv2 = nn.Upsample((157,1), mode='bilinear', align_corners=True)#nn.ConvTranspose2d(128,128,kernel_size=[2,1],stride=[2,1],output_padding=[1,0])
+        self.deconv1 = nn.Upsample((78,1), mode='bilinear', align_corners=True)
+        self.deconv2 = nn.Upsample((157,1), mode='bilinear', align_corners=True)
         self.bn_fcn = nn.BatchNorm2d(128, eps=0.001, momentum=0.99)
         self.conv1x1 = nn.Conv2d(256,128,1)
         self.dropout = nn.Dropout(0.5) 
-
-    # def load_state_dict(self, state_dict, strict=True):
-    #     self.cnn.load_state_dict(state_dict)
-
-    # def state_dict(self, destination=None, prefix='', keep_vars=False):
-    #     return self.cnn.state_dict(destination=destination, prefix=prefix, keep_vars=keep_vars)
-
-    # def save(self, filename):
-    #     torch.save(self.cnn.state_dict(), filename)
 
     def forward(self, x):
         # input size : (batch_size, n_channels, n_frames, n_freq)
@@ -105,25 +92,12 @@ class CNN(nn.Module):
         x_up = self.pool_fcn(x_up) 
         x_2 = x_up # 128 x 78 x 1
         x_up = self.cnn_fcn(x_up)
-        # x_up = self.cnn_fcn_4(x_up)
         x_up = self.bn_fcn(x_up)
         x_up = self.glu(x_up)
-        # x_up = self.glu_4(x_up)
         x_up = self.dropout(x_up)
         x_up = self.pool_fcn(x_up) 
         x_4 = x_up # 128 x 39 x 1
-        '''
-        # x_2 = (x_2 + self.deconv1(x_4))/2 # for fcn_0
-        # x_2 = self.bn_fcn(x_2 + self.glu(self.deconv1(x_4))) # for fcn_1
-        x_2 = torch.cat((x_2, self.glu(self.deconv1(x_4))), 1)
-        x_2 = self.conv1x1(x_2)
-        x_2 = self.bn_fcn(x_2)
-        # x = (x + self.deconv2(x_2))/2 # for fcn_0
-        # x = self.bn_fcn(x + self.glu(self.deconv2(x_2))) # for fcn_1
-        x = torch.cat((x, self.glu(self.deconv2(x_2))), 1) 
-        x = self.conv1x1(x)
-        x = self.bn_fcn(x)
-        '''
+
         return x, x_2, x_4
 
 
