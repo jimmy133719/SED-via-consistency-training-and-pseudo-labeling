@@ -2,4 +2,4 @@
 
 This work is based on the baseline of DCASE task 4 (https://github.com/turpaultn/dcase20_task4/tree/public_branch/baseline). 
 
-Check if the baseline code work before trying our codes.
+**Note:** Check if the baseline code works before using our code.
