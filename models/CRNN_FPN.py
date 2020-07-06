@@ -55,7 +55,6 @@ class CRNN_fpn(nn.Module):
 
         self.upsample_2 = nn.Upsample((157,1), mode='bilinear', align_corners=True)
         self.upsample_4 = nn.Upsample((78,1), mode='bilinear', align_corners=True)
-        # self.conv1x1 = nn.Conv2d(512,256,1)
         self.conv1x1_2 = nn.Conv2d(512,256,1) # for x_2
         self.conv1x1_4 = nn.Conv2d(512,256,1) # for x
 
@@ -104,21 +103,9 @@ class CRNN_fpn(nn.Module):
         x = x.permute(0, 2, 1)
 
         strong = self.dense(x)  # [bs, frames, nclass]
-        '''
-        strong_2 = self.dense(x_2).permute(0, 2, 1)
-        strong_4 = self.dense(x_4).permute(0, 2, 1)
-        strong_2 = (strong_2.unsqueeze(-1)+self.upsample_4(strong_4.unsqueeze(-1)))/2
-        strong = ((strong.permute(0, 2, 1).unsqueeze(-1)+self.upsample_2(strong_2))/2).squeeze(-1).permute(0, 2, 1)
-        '''
         strong = self.sigmoid(strong)
         if self.attention:
             sof = self.dense_softmax(x)  # [bs, frames, nclass]
-            '''
-            sof_2 = self.dense_softmax(x_2).permute(0, 2, 1)
-            sof_4 = self.dense_softmax(x_4).permute(0, 2, 1)
-            sof_2 = (sof_2.unsqueeze(-1)+self.upsample_4(sof_4.unsqueeze(-1)))/2
-            sof = ((sof.permute(0, 2, 1).unsqueeze(-1)+self.upsample_2(sof_2))/2).squeeze(-1).permute(0, 2, 1)
-            '''
             sof = self.softmax(sof)
             sof = torch.clamp(sof, min=1e-7, max=1)
             weak = (strong * sof).sum(1) / sof.sum(1)   # [bs, nclass]
