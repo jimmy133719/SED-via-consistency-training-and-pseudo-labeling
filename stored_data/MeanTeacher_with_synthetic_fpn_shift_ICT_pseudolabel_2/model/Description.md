@@ -2,4 +2,4 @@ model link = https://drive.google.com/file/d/1IVPDOpZH8KbgPrHOZRAIrn-gptVCffiD/v
 
 **Note:** Place downloaded model under this path and do not edit model name
 
-mix all semi-supervised learning strategy with max consistency weight = 2
+**Description:** mix all semi-supervised learning strategy with max consistency weight = 2
