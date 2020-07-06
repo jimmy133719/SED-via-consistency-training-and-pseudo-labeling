@@ -5,8 +5,6 @@ import torch
 
 from models.RNN import BidirectionalGRU
 from models.CNN_FPN import CNN
-from models.tcn import TemporalConvNet
-from models.Resnet import resnet18
 
 import pdb
 
@@ -40,9 +38,6 @@ class CRNN_fpn(nn.Module):
             self.rnn_4 = BidirectionalGRU(nb_in,
                                         n_RNN_cell, dropout=dropout_recurrent, num_layers=n_layers_RNN)
 
-        elif self.rnn_type =='TCN':
-            # Number of [n_RNN_cell] needs to be defined
-            self.rnn = TemporalConvNet(self.cnn.nb_filters[-1], [n_RNN_cell] * 2, 3, dropout=0.25)
         else:
             NotImplementedError("Only BGRU supported for CRNN for now")
         self.dropout = nn.Dropout(dropout)
@@ -98,8 +93,6 @@ class CRNN_fpn(nn.Module):
             x_2 = x_2.permute(0, 2, 1)  # [bs, chan, frames] 
             x_4 = self.rnn_4(x_4)
             x_4 = x_4.permute(0, 2, 1)  # [bs, chan, frames]
-        elif self.rnn_type == 'TCN':
-            x = self.rnn(x.transpose(1, 2)).transpose(1, 2)
 
         x = self.dropout(x).unsqueeze(-1)
         x_2 = self.dropout(x_2).unsqueeze(-1)
