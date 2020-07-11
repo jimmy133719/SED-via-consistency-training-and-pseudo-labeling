@@ -1,3 +1,4 @@
+# This code is for training SED model with ICT, SCT, weakly pseudo-labeling methods
 # -*- coding: utf-8 -*-
 import argparse
 import datetime
@@ -66,7 +67,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
     for ema_params, params in zip(ema_model.parameters(), model.parameters()):
         ema_params.data.mul_(alpha).add_(1 - alpha, params.data)
 
-### ICT
+### ICT necessary function ###
 def get_current_consistency_weight(final_consistency_weight, epoch, step_in_epoch, total_steps_in_epoch, consistency_rampup_starts, consistency_rampup_ends):
     # Consistency ramp-up from https://arxiv.org/abs/1610.02242
     epoch = epoch - consistency_rampup_starts
@@ -81,10 +82,7 @@ def mixup_data_sup(x, y, alpha=1.0):
         lam = 1.
     batch_size = x.size()[0]
     index = np.random.permutation(batch_size)
-    #x, y = x.numpy(), y.numpy()
-    #mixed_x = torch.Tensor(lam * x + (1 - lam) * x[index,:])
     mixed_x = lam * x + (1 - lam) * x[index,:]
-    #y_a, y_b = torch.Tensor(y).type(torch.LongTensor), torch.Tensor(y[index]).type(torch.LongTensor)
     y_a, y_b = y, y[index]
     return mixed_x, y_a, y_b, lam
 
@@ -133,34 +131,25 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
     log.debug("Nb batches: {}".format(len(train_loader)))
     start = time.time()
     for i, ((batch_input, ema_batch_input), target) in enumerate(train_loader):
-        # Generate input random shift feature 
+        # Generate random time shift list 
         pooling_time_ratio = 4
         shift_list = [random.randint(-32,32)*pooling_time_ratio for iter in range(cfg.batch_size)]
-        # frequency shift
+        # Generate random frequency shift list
         freq_shift_list = [random.randint(-4,4) for iter in range(cfg.batch_size)]
+        
+        # Use time shift list and frequency shift list to produce shifted input data
         for k in range(cfg.batch_size):
             input_shift = torch.roll(batch_input[k], shift_list[k], dims=1)
             input_shift = torch.unsqueeze(input_shift, 0)
-            # frequency shift
             input_freq_shift = torch.roll(batch_input[k], freq_shift_list[k], dims=2)
             input_freq_shift = torch.unsqueeze(input_freq_shift, 0)
             if k==0:
                 batch_input_shift = input_shift
-                # frequency shift
                 batch_input_freq_shift = input_freq_shift
             else:
                 batch_input_shift = torch.cat((batch_input_shift,input_shift), 0)
-                # frequency shift
                 batch_input_freq_shift = torch.cat((batch_input_freq_shift,input_freq_shift), 0)
-            # input_shift = np.roll(batch_input[k].numpy(), shift_list[k], axis=1)  
-            # input_shift = np.expand_dims(input_shift, axis=0) # add batch axis
-            # if k==0:
-            #     batch_input_shift = input_shift
-            # else:
-            #     batch_input_shift = np.concatenate((batch_input_shift, input_shift), axis=0)
-            # batch_input_shift = torch.tensor(batch_input_shift)
         batch_input_shift = to_cuda_if_available(batch_input_shift)
-        # frequency shift
         batch_input_freq_shift = to_cuda_if_available(batch_input_freq_shift)
 
         global_step = c_epoch * len(train_loader) + i
@@ -176,7 +165,7 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
         weak_pred_ema = weak_pred_ema.detach()
         strong_pred, weak_pred = model(batch_input)
 
-        # Prediction and target(strong) shift
+        # Generate shifted prediction and target(strong) with time shift list and frequency shift list
         for k in range(cfg.batch_size):
             pool_shift = int(shift_list[k]/pooling_time_ratio)
             pred_shift = torch.roll(strong_pred[k], pool_shift, dims=0)
@@ -189,13 +178,14 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
             else:
                 strong_pred_shift = torch.cat((strong_pred_shift,pred_shift), 0)
                 strong_target_shift = torch.cat((strong_target_shift,target_shift), 0)
-        strong_pred_shift = strong_pred_shift.detach() 
-        # Shifted prediction
+        strong_pred_shift = strong_pred_shift.detach()
+        
+        # Prediction for time-shifted input
         strong_shift_pred, weak_shift_pred = model(batch_input_shift)
-        # frequency shift
+        # Prediction for frequency-shifted input
         strong_freq_shift_pred, weak_freq_shift_pred = model(batch_input_freq_shift)
 
-        # setting for ICT
+        # Setting for ICT
         mask_unlabel = slice(6,18)
         mixup_sup_alpha = 1.0
         mixup_usup_alpha = 2.0
@@ -207,11 +197,10 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
         # Weak BCE Loss
         target_weak = target.max(-2)[0]  # Take the max in the time axis
         if mask_weak is not None:
-            # weak_class_loss = class_criterion(weak_pred[mask_weak], target_weak[mask_weak])
             ema_class_loss = class_criterion(weak_pred_ema[mask_weak], target_weak[mask_weak])
             weak_class_loss = class_criterion(torch.cat((weak_pred[mask_weak], weak_pred[mask_unlabel]), 0), torch.cat((target_weak[mask_weak], target_weak[mask_unlabel]), 0))
             loss = weak_class_loss
-            # frequency shift
+            # Add frequency shift weak loss
             weak_freq_shift_class_loss = class_criterion(weak_freq_shift_pred[mask_weak], target_weak[mask_weak])
             loss += weak_freq_shift_class_loss
 
@@ -223,7 +212,6 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
                 mixup_weak_class_loss = loss_func_weak(class_criterion, output_mixed_weak)
                 meters.update('maxup_weak_class_loss', mixup_weak_class_loss.item())
                 loss += mixup_weak_class_loss
-                # loss = mixup_weak_class_loss
 
             if i == 0:
                 log.debug(f"target: {target.mean(-2)} \n Target_weak: {target_weak} \n "
@@ -242,9 +230,9 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
             strong_ema_class_loss = class_criterion(strong_pred_ema[mask_strong], target[mask_strong])
             meters.update('Strong EMA loss', strong_ema_class_loss.item())
 
-            # shift target loss
+            # Add time shift strong loss
             strong_shift_class_loss = class_criterion(strong_shift_pred[mask_strong], strong_target_shift[mask_strong])
-            # frequency shift
+            # Add frequency shift strong loss
             strong_freq_shift_class_loss = class_criterion(strong_freq_shift_pred[mask_strong], target[mask_strong])
 
             if loss is not None:
@@ -289,23 +277,10 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
             ema_logit_unlabeled, ema_logit_unlabeled_weak = ema_model(batch_input_u)
             ema_logit_unlabeled = ema_logit_unlabeled.detach()
             ema_logit_unlabeled_weak = ema_logit_unlabeled_weak.detach()
-            # sharpening
-            # T = 0.5
-            # ema_logit_unlabeled = ema_logit_unlabeled**(1/T)
-            # ema_logit_unlabeled = ema_logit_unlabeled / ema_logit_unlabeled.sum(dim=-1, keepdim=True)
-            # ema_logit_unlabeled_weak = ema_logit_unlabeled_weak**(1/T)
-            # ema_logit_unlabeled_weak = ema_logit_unlabeled_weak / ema_logit_unlabeled_weak.sum(dim=-1, keepdim=True)
 
             if mixup_consistency:
-                # mixedup_x, mixedup_target, mixedup_target_weak, lam = mixup_data(ema_batch_input, strong_pred_ema, weak_pred_ema, mixup_usup_alpha)
                 mixedup_x, mixedup_target, mixedup_target_weak, lam = mixup_data(batch_input_u, ema_logit_unlabeled, ema_logit_unlabeled_weak, mixup_usup_alpha)
                 output_mixed_u, output_mixed_u_weak = model(mixedup_x)
-                # sharpening
-                # output_mixed_u = output_mixed_u**(1/T)
-                # output_mixed_u = output_mixed_u / output_mixed_u.sum(dim=-1, keepdim=True)
-                # output_mixed_u_weak = output_mixed_u_weak**(1/T)
-                # output_mixed_u_weak = output_mixed_u_weak / output_mixed_u_weak.sum(dim=-1, keepdim=True)
-
                 mixup_consistency_weak_loss = consistency_criterion(output_mixed_u_weak, mixedup_target_weak)# / 12
                 mixup_consistency_strong_loss = consistency_criterion(output_mixed_u, mixedup_target)# / 12
                 meters.update('mixup_cons_weak_loss', mixup_consistency_weak_loss.item())
@@ -323,6 +298,8 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
         loss += consistency_loss_shift
 
         niter = epoch * len(train_loader) + i
+        
+        # Below code is for tensorboard
         writer.add_scalar('Loss', loss.item(), niter) 
         writer.add_scalar('Weak class loss', weak_class_loss.item(), niter)
         writer.add_scalar('Weak EMA loss', ema_class_loss.item(), niter)
@@ -336,7 +313,6 @@ def train(train_loader, model, optimizer, c_epoch, ema_model=None, mask_weak=Non
         writer.add_scalar('Mixup consistency strong loss', mixup_consistency_strong_loss.item(), niter)    
         writer.add_scalar('Consistency shift', consistency_loss_shift.item(), niter)
         writer.add_scalar('Strong shift class loss', strong_shift_class_loss.item(), niter)
-        # frequency shift
         writer.add_scalar('Weak freq shift class loss', weak_freq_shift_class_loss.item(), niter)
         writer.add_scalar('Strong freq shift class loss', strong_freq_shift_class_loss.item(), niter)
 
@@ -387,11 +363,6 @@ def get_dfs(desed_dataset, nb_files=None, separated_sources=False):
     train_synth_df.offset = train_synth_df.offset * cfg.sample_rate // cfg.hop_size // pooling_time_ratio
     log.debug(valid_synth_df.event_label.value_counts())
 
-    # # Eval 2018 to report results
-    # eval2018 = pd.read_csv(cfg.eval2018, sep="\t")
-    # eval_2018_df = validation_df[validation_df.filename.isin(eval2018.filename)]
-    # log.debug(f"eval2018 len: {len(eval_2018_df)}")
-
     data_dfs = {"weak": weak_df,
                 "unlabel": unlabel_df,
                 "synthetic": synthetic_df,
@@ -433,7 +404,8 @@ if __name__ == '__main__':
     store_dir = os.path.join("stored_data", "MeanTeacher" + add_dir_model_name + other_description)
     saved_model_dir = os.path.join(store_dir, "model")
     saved_pred_dir = os.path.join(store_dir, "predictions")
-    start_epoch = 0
+    
+    start_epoch = 0 # this parameter is for setting the epoch to start training, if > 0, model trained from start_epoch-1 is required
     if start_epoch == 0:
         writer = SummaryWriter(os.path.join(store_dir, "log"))
         os.makedirs(store_dir, exist_ok=True)
@@ -535,10 +507,9 @@ if __name__ == '__main__':
     if start_epoch == 0:
         crnn.apply(weights_init)
         crnn_ema.apply(weights_init)
-    # resume training
+    # Resume training
     else:
         model_path = os.path.join(saved_model_dir, 'baseline_epoch_{}'.format(start_epoch-1))
-        # model_path = 'stored_data/Baseline_pretrained/model/dcase20_baseline_model.p'
         expe_state = torch.load(model_path, map_location="cpu")
         crnn.load_state_dict(expe_state["model"]["state_dict"])
         crnn_ema.load_state_dict(expe_state["model"]["state_dict"])  
@@ -647,13 +618,7 @@ if __name__ == '__main__':
     # Validation
     # ##############
     crnn.eval()
-    # transforms_valid = get_transforms(cfg.max_frames, scaler, add_axis_conv)
     predicitons_fname = os.path.join(saved_pred_dir, "baseline_validation.tsv")
-
-    # validation_data = DataLoadDf(dfs["validation"], encod_func, transform=transforms_valid, return_indexes=True)
-    # validation_dataloader = DataLoader(validation_data, batch_size=cfg.batch_size, shuffle=False, drop_last=False)
-    # validation_labels_df = dfs["validation"].drop("feature_filename", axis=1)
-    # durations_validation = get_durations_df(cfg.validation, cfg.audio_validation_dir)
     # Preds with only one value
     valid_predictions = get_predictions(crnn, validation_dataloader, many_hot_encoder.decode_strong,
                                         pooling_time_ratio, median_window=median_window,
