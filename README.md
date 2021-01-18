@@ -37,7 +37,7 @@ Choose a well-trained model and evaluate
 python TestModel.py -m=model_path -g=../dataset/metadata/validation/validation.tsv -fpn=T -lp=F
 ```
 -------------------------------
-### Result
+### Performance
 | Method | F1 | PSDS |
 | ----- | ----- | --- |
 | CRNN (baseline) | 34.8 | 60.0 |
