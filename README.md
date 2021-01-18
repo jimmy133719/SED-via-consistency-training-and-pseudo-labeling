@@ -4,6 +4,7 @@ This work is based on the baseline of DCASE task 4 (https://github.com/turpaultn
 
 **Note:** Check if the baseline code works before using our code.
 
+-------------------------------
 #### Train baseline model
 The reproduced baseline model is used to compare with the model trained by proposed methods.
 ```
@@ -30,6 +31,8 @@ Weak pseudo-label is required, else, replace line 201 with below code
 weak_class_loss = class_criterion(weak_pred[mask_weak], target_weak[mask_weak])
 ```
 #### Evaluate well-trained model
+Choose a well-trained model and evaluate
 ```
 python TestModel.py -m=model_path -g=../dataset/metadata/validation/validation.tsv -fpn=T -lp=F
 ```
+-------------------------------
