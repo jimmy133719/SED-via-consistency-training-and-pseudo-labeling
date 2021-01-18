@@ -19,6 +19,7 @@ Inference weak pseudo-label from audio tagging model
 ```
 python audio_tagging_inference.py -m=model_path -g=../dataset/metadata/validation/validation.tsv
 ```
+Substitude the generated pseudo-label for ../dataset/metadata/train/unlabel_in_domain.tsv
 #### Train SED model with ICT+SCT+weak pseudo-label
 The model is trained with proposed training strategies, and a novel network architecture, FP-CRNN can be selected to replace CRNN.
 ```
@@ -27,4 +28,8 @@ python main_ISP.py -fpn=True
 Weak pseudo-label is required, else, replace line 201 with below code
 ```
 weak_class_loss = class_criterion(weak_pred[mask_weak], target_weak[mask_weak])
+```
+#### Evaluate well-trained model
+```
+python TestModel.py -m=model_path -g=../dataset/metadata/validation/validation.tsv -fpn=T -lp=F
 ```
