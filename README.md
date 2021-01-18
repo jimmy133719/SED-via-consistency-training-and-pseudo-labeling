@@ -1,4 +1,4 @@
-# DCASE2020_task4
+# SED via consistency training and pseudo labeling
 
 This work is based on the baseline of DCASE task 4 (https://github.com/turpaultn/dcase20_task4/tree/public_branch/baseline). 
 
