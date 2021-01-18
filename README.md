@@ -5,7 +5,8 @@ This work is based on the baseline of DCASE task 4 (https://github.com/turpaultn
 **Note:** Check if the baseline code works before using our code.
 
 -------------------------------
-#### Train baseline model
+### Procedure
+#### Train baseline model (optional)
 The reproduced baseline model is used to compare with the model trained by proposed methods.
 ```
 python main.py
@@ -36,3 +37,9 @@ Choose a well-trained model and evaluate
 python TestModel.py -m=model_path -g=../dataset/metadata/validation/validation.tsv -fpn=T -lp=F
 ```
 -------------------------------
+### Result
+| Method | F1 | PSDS |
+| ----- | ----- | --- |
+| CRNN (baseline) | 34.8 | 60.0 |
+| CRNN w/ISP | 45.1 | 65.8 |
+| FP-CRNN w/ISP | 44.5 | 66.9 |
