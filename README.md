@@ -33,9 +33,17 @@ Weak pseudo-label is required, else, replace line 201 with below code
 weak_class_loss = class_criterion(weak_pred[mask_weak], target_weak[mask_weak])
 ```
 #### Evaluate well-trained model
-Choose a well-trained model and evaluate
+You can either use the provided pre-trained models or your own trained models. 
+Choose a well-trained model (Ex. ./stored_data/MeanTeacher_with_synthetic_fpn_shift_ICT_pseudolabel_2/model/baseline_best) and evaluate
+
 ```
 python TestModel.py -m=model_path -g=../dataset/metadata/validation/validation.tsv -fpn=T -lp=F
+```
+**Note:** Please uncomment the following code in ./models/CRNN_FPN.py during inference or evaluation
+```
+check = (weak > 0.5).type(torch.FloatTensor).cuda()
+check = check.unsqueeze(1).repeat(1,157,1)
+strong = strong * check
 ```
 -------------------------------
 ### Performance
