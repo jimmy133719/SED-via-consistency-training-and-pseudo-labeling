@@ -400,8 +400,8 @@ if __name__ == '__main__':
         add_dir_model_name = "_no_synthetic"
     else:
         add_dir_model_name = "_with_synthetic"
-    other_description = 'ISP' # name your own model
-    store_dir = os.path.join("stored_data", "MeanTeacher" + add_dir_model_name + other_description)
+    model_name = # name your own model
+    store_dir = os.path.join("stored_data", model_name)
     saved_model_dir = os.path.join(store_dir, "model")
     saved_pred_dir = os.path.join(store_dir, "predictions")
     
