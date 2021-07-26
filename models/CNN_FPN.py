@@ -68,7 +68,7 @@ class CNN(nn.Module):
 
         self.cnn = cnn
 
-        # element for fcn
+        # element for fpn
         self.cnn_fcn = nn.Conv2d(128,128,3,1,1)
         self.glu = GLU(128)
         self.pool_fcn = nn.AvgPool2d([2,1])
@@ -84,10 +84,8 @@ class CNN(nn.Module):
         x = self.cnn(x)
         # further pooling for fcn
         x_up = self.cnn_fcn(x)
-        # x_up = self.cnn_fcn_2(x)
         x_up = self.bn_fcn(x_up)
         x_up = self.glu(x_up)        
-        # x_up = self.glu_2(x_up)
         x_up = self.dropout(x_up)
         x_up = self.pool_fcn(x_up) 
         x_2 = x_up # 128 x 78 x 1
