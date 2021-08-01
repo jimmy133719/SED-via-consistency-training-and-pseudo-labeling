@@ -49,7 +49,7 @@ strong = strong * check
 | CRNN w/ISP | 45.1 | 65.8 |
 | FP-CRNN w/ISP | 44.5 | 66.9 |
 -------------------------------
-#### Event position analysis for SCT
+### Event position analysis for SCT
 Analyze the models using SCT for their events' robustness
 ```
 python SCT_analysis.py
