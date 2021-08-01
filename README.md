@@ -28,10 +28,6 @@ The model is trained with proposed training strategies, and a novel network arch
 ```
 python main_ISP.py -fpn=True
 ```
-Weak pseudo-label is required, else, replace line 201 with below code
-```
-weak_class_loss = class_criterion(weak_pred[mask_weak], target_weak[mask_weak])
-```
 #### Evaluate well-trained model
 You can either use the provided pre-trained models or your own trained models. 
 Choose a well-trained model (Ex. ./stored_data/MeanTeacher_with_synthetic_fpn_shift_ICT_pseudolabel_2/model/baseline_best) and evaluate
@@ -52,3 +48,9 @@ strong = strong * check
 | CRNN (baseline) | 34.8 | 60.0 |
 | CRNN w/ISP | 45.1 | 65.8 |
 | FP-CRNN w/ISP | 44.5 | 66.9 |
+-------------------------------
+#### Event position analysis for SCT
+Analyze the models using SCT for their events' robustness
+```
+python SCT_analysis.py
+```
